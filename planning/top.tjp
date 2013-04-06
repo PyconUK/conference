@@ -1,0 +1,261 @@
+project pyconuk "PyconUK Conference 2013"  2013-04-01 - 2013-09-30 {
+        timezone "Europe/London"
+        timeformat "%d-%m-%Y"
+        currency "GBP"
+ 
+        scenario plan "Plan" {}
+}
+
+resource rjt "Richard Taylor" {
+        email "rjt-pyconuk@thegrindstone.me.uk"
+}
+
+resource pinner "John Pinner" {
+        email "funthyme@gmail.com"
+}
+
+resource hawkz "Steve Hawkz" {
+        email "steve@hawkz.com"
+}
+
+resource zeth "Zeth" {
+        email "theology@gmail.com"
+}
+
+resource luke "Luke Stanley" {
+        email "luke.stanley@gmail.com"
+}
+
+resource anon "AN Other" { }
+
+task main "Main Conference" {
+        # All tasks related to delivery of the main conference program.
+
+        depends !milestones.start
+        
+        task plan "Agree outline conference programme." {
+                # Agrement on the number of days, target for attendees.
+                # catering etc.
+
+                duration 2w
+        }
+        task costs "Develop cost plan" {
+                # Calculate expected costs of programme.
+
+                duration 2w
+                depends !plan
+        }
+}
+
+task edu "Pycon EDU" {
+        # All tasks related to the delivery of the EDU track.
+
+        depends !milestones.start
+
+        task plan "Agree outline conference programme." {
+                duration 1w
+                depends !!main.plan
+        }
+
+        task costs "Develop cost plan" {
+                duration 2w
+                depends !plan
+        }
+}
+
+task sponsorship "Conference Sponsorship" {
+        # Tasks related to the canvasing and contacting of sponsors.
+
+        depends !milestones.start
+  
+        task video "Complete and publish 2012 video" {
+
+                task logos "Collect HiRes logos for 2012 sponsors" {
+                        duration 2d
+                        allocate luke
+                        journalentry 2013-04-02 "Unable to locate logos" {
+                                author rjt
+                                alert yellow
+                                summary -8<-
+                                  Despite an extensive search we have not been
+                                  able to locate last years sponsor logos.
+                                ->8-
+                                details -8<-
+                                  Poor config control of conference material and
+                                  too much of a rush during the conference.
+                                  
+                                  Luke has agreed to repeat the job of tracking 
+                                  down the logos.
+                                ->8-
+                        }
+                } 
+
+                task completedvid "Complete video" {
+                        duration 1w
+                        depends !logos
+                }
+
+                task shortvid "Produce short video" {        
+                        duration 1w
+                        depends !completedvid
+                }
+        }
+}
+
+task milestones "Milestones"{ 
+        # All major program milestone and deadlines.
+
+        task start "Planning start" {
+                start ${projectstart}
+        }
+
+        task platform "Conference Platform Ready" {
+                # Wiki, website, video etc read for go-live to sponsors and delegates.
+                depends !!sponsorship.video 
+        }
+
+        task open_bookings "Open Eventbrite to take bookings" {
+                # Ready to take orders.
+                depends !!main.costs
+                depends !!edu.costs
+        }
+
+        task close_bookings "Close Eventbrite booking" {
+                end 2013-09-28
+        }
+
+        task open_talk_sub "Open talk submissions" {
+                end 2013-08-15
+        }
+
+        task close_talk_sub "Close talk submissions" {
+                end 2013-09-15
+        }
+
+        task conference_start "Conference start" {
+                end 2013-09-30
+        }
+}
+
+macro TaskTip [
+  tooltip istask() -8<-
+    '''Start: ''' <-query attribute='start'->
+    '''End: ''' <-query attribute='end'->
+    ----
+    '''Resources:'''
+
+    <-query attribute='resources'->
+    ----
+    '''Precursors: '''
+
+    <-query attribute='precursors'->
+    ----
+    '''Followers: '''
+
+    <-query attribute='followers'->
+    ->8-
+]
+
+navigator navbar {
+  hidereport @none
+}
+
+textreport frame "" {
+  header -8<-
+    == PyconUK 2013 ==
+    <[navigator id="navbar"]>
+  ->8-
+  footer "----"
+  textreport index "Overview" {
+    formats html
+    center '<[report id="overview"]>'
+  }
+  textreport "Status" {
+    formats html
+    center -8<-
+      <[report id="status.dashboard"]>
+      ----
+      <[report id="status.completed"]>
+      ----
+      <[report id="status.ongoing"]>
+      ----
+      <[report id="status.future"]>
+    ->8-
+  }
+}
+
+taskreport overview "" {
+  header -8<-
+    === Project Overview ===
+
+    The project is structured into 2 baord areas.
+
+    # Main Conference
+    # PyconUK Edu
+
+    === Original Project Plan ===
+  ->8-
+  columns bsi { title 'WBS' },
+          name, start, end, chart { ${TaskTip} }
+  loadunit days
+
+  period ${projectstart}-${projectend}
+
+  footer -8<-
+    === Resources ===
+
+    See [[ResourceGraph]] for detailed resource allocations.
+
+  ->8-
+}
+
+# Macro to set the background color of a cell according to the alert
+# level of the task.
+macro AlertColor [
+  cellcolor plan.alert = 0 "#00D000" # green
+  cellcolor plan.alert = 1 "#D0D000" # yellow
+  cellcolor plan.alert = 2 "#D00000" # red
+]
+
+taskreport status "" {
+  columns bsi { width 50 title 'WBS' }, name { width 150 },
+          start { width 100 }, end { width 100 },
+          effort { width 100 },
+          alert { tooltip plan.journal
+                          != '' "<-query attribute='journal'->" width 150 },
+          status { width 150 }
+
+  scenarios plan
+
+  taskreport dashboard "" {
+    headline "Project Dashboard (<-query attribute='now'->)"
+    columns name { title "Task" ${AlertColor} width 200},
+            resources { width 200 ${AlertColor}
+                        listtype bullets
+                        listitem "<-query attribute='name'->"
+                        start ${projectstart} end ${projectend} },
+            alerttrend { title "Trend" ${AlertColor} width 50 },
+            journal { width 350 ${AlertColor} }
+    journalmode status_up
+    journalattributes headline, author, date, summary, details
+    hidetask ~hasalert(0)
+    sorttasks alert.down, plan.end.up
+    period %{${now} - 1w} +1w
+  }
+  taskreport completed "" {
+    headline "Already completed tasks"
+    hidetask ~(plan.end <= ${now})
+  }
+  taskreport ongoing "" {
+    headline "Ongoing tasks"
+    hidetask ~((plan.start <= ${now}) & (plan.end > ${now}))
+  }
+  taskreport future "" {
+    headline "Future tasks"
+    hidetask ~(plan.start > ${now})
+  }
+}
+
+
+
+
