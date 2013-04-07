@@ -3,8 +3,13 @@ project pyconuk "PyconUK Conference 2013"  2013-04-01 - 2013-09-30 {
         timeformat "%d-%m-%Y"
         currency "GBP"
  
-        scenario plan "Plan" {}
+        scenario plan "Plan" {
+                scenario real "Real"
+        }
+
 }
+
+flags milestone
 
 resource rjt "Richard Taylor" {
         email "rjt-pyconuk@thegrindstone.me.uk"
@@ -73,6 +78,8 @@ task sponsorship "Conference Sponsorship" {
                 task logos "Collect HiRes logos for 2012 sponsors" {
                         duration 2d
                         allocate luke
+                        complete 50
+                        real:start 2013-04-07
                         journalentry 2013-04-02 "Unable to locate logos" {
                                 author rjt
                                 alert yellow
@@ -104,6 +111,7 @@ task sponsorship "Conference Sponsorship" {
 
 task milestones "Milestones"{ 
         # All major program milestone and deadlines.
+        flags milestone
 
         task start "Planning start" {
                 start ${projectstart}
@@ -220,12 +228,17 @@ macro AlertColor [
 taskreport status "" {
   columns bsi { width 50 title 'WBS' }, name { width 150 },
           start { width 100 }, end { width 100 },
-          effort { width 100 },
+          duration { width 100 },
+          resources { width 200 
+                  listtype bullets
+                  listitem "<-query attribute='name'->"
+                  start ${projectstart} end ${projectend} },
           alert { tooltip plan.journal
                           != '' "<-query attribute='journal'->" width 150 },
           status { width 150 }
 
-  scenarios plan
+  loadunit days
+  scenarios real
 
   taskreport dashboard "" {
     headline "Project Dashboard (<-query attribute='now'->)"
@@ -239,20 +252,20 @@ taskreport status "" {
     journalmode status_up
     journalattributes headline, author, date, summary, details
     hidetask ~hasalert(0)
-    sorttasks alert.down, plan.end.up
+    sorttasks alert.down, real.end.up
     period %{${now} - 1w} +1w
   }
   taskreport completed "" {
     headline "Already completed tasks"
-    hidetask ~(plan.end <= ${now})
+    hidetask ~(real.end <= ${now})
   }
   taskreport ongoing "" {
     headline "Ongoing tasks"
-    hidetask ~((plan.start <= ${now}) & (plan.end > ${now}))
+    hidetask ~((real.start <= ${now}) & (real.end > ${now})) 
   }
   taskreport future "" {
     headline "Future tasks"
-    hidetask ~(plan.start > ${now})
+    hidetask ~(real.start > ${now})
   }
 }
 
